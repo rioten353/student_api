@@ -1,9 +1,13 @@
 package main
 
 import (
-	"fmt"
-	"log"
+	"context"
+	"log/slog"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/rioten353/student_api/internal/config"
 )
@@ -28,10 +32,27 @@ func main() {
 		Handler: router,
 	}
 
-	fmt.Println("Server is running on", cfg.Address)
+	slog.Info("Server is running on " + cfg.Address)
+	done := make(chan os.Signal, 1)
 
-	if err := server.ListenAndServe(); err != nil {
-		log.Fatal("failed to start server")
+	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		if err := server.ListenAndServe(); err != nil {
+			slog.Error("Server is not running: ", slog.String("error ", err.Error()))
+		}
+	}()
+
+	<-done
+
+	slog.Info("Shuddown server: " + cfg.Address)
+
+	ctx, cancle := context.WithTimeout(context.Background(), 5*time.Second)
+
+	defer cancle()
+
+	if err := server.Shutdown(ctx); err != nil {
+		slog.Error("failed to shutdown server", slog.String("error", err.Error()))
 	}
 
 }

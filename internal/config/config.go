@@ -2,7 +2,7 @@ package config
 
 import (
 	"flag"
-	"log"
+	"log/slog"
 	"os"
 
 	"github.com/ilyakaznacheev/cleanenv"
@@ -29,16 +29,16 @@ func MustLoad() *Config {
 		configPath = *flags
 
 		if configPath == "" {
-			log.Fatal("config file path is required")
+			slog.Info("config file path is required")
 		}
 	}
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
-		log.Fatal("config file not found")
+		slog.Info("config file not found: " + configPath)
 	}
 	var cfg Config
 
 	if err := cleanenv.ReadConfig(configPath, &cfg); err != nil {
-		log.Fatalf("failed to read config file %s", err.Error())
+		slog.Error("failed to read config file", slog.String("error", err.Error()))
 	}
 
 	return &cfg
